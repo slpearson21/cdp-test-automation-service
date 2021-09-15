@@ -1,0 +1,60 @@
+#!/usr/bin/env node
+
+const app = require('../app')
+const http = require('http')
+
+const DIContainer = require('../../../main')
+const container = DIContainer()
+
+const logger = container.resolve('logger')
+const startup = container.resolve('startup')
+const shutdown = container.resolve('shutdown')
+
+/**
+ * Runs shutdown sequence
+ *
+ * @param params
+ * @param {string} params.signal signal that triggered shutdown
+ * @param {Function} params.shutdown shutdown action
+ * @param {object} params.server express server instance
+ * @returns {undefined}
+ */
+const onSignal = ({ signal, shutdown, server }) => async () => {
+  logger.info('Server shutting down...', { signal })
+  server.close(async () => {
+    try {
+      await shutdown()
+      logger.error('Server gracefully shutdown')
+      process.exit(0)
+    } catch (error) {
+      logger.error('Failed to gracefully shutdown', { error })
+      process.exit(1)
+    }
+  })
+}
+
+// Server Startup
+startup().then(startupResults => {
+  logger.info('startup actions successful', { startupResults })
+  const { PORT: port } = container.resolve('envConfig')
+
+  app.set('port', port)
+
+  const server = http.createServer(app)
+
+  // register shutdown handlers
+  process.on('SIGTERM', onSignal({ signal: 'SIGTERM', shutdown, server }))
+  process.on('SIGINT', onSignal({ signal: 'SIGINT', shutdown, server }))
+
+  server.listen(port)
+
+  server.on('error', async (error) => {
+    logger.info('express service encountered an error', { error })
+    await shutdown()
+    process.exit(1)
+  })
+
+  server.on('listening', () => {
+    logger.info('express service ready')
+  })
+})

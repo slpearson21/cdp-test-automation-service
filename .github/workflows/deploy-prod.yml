@@ -1,0 +1,78 @@
+name: Production Build and Deploy
+
+on:
+  repository_dispatch:
+    types: [prod-deploy]
+
+jobs:
+  build:
+    name: Build and Deploy Prod
+    runs-on: self-hosted
+    env:
+      ENVIRONMENT_NAME: prod
+      IMAGE_TAG: ${{ github.event.client_payload.image-tag }}
+      ECR_REGISTRY: ${{ github.event.client_payload.ecr-registry }}
+      PROJECT_NAME: ${{ github.event.client_payload.project-name }}
+      HELM_CHARTS_VERSION: 1.4.30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Setup Helm
+        uses: azure/setup-helm@v1
+        with:
+          version: v3.2.1
+
+      - name: Setup kubectl
+        uses: azure/setup-kubectl@v1
+        id: setup-kubectl
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-west-2
+          role-to-assume: ${{ secrets.PROD_ROLE_ARN }}
+          role-duration-seconds: 3600
+
+      - name: Update Kubernetes Configuration for Prod Cluster
+        run: |
+          aws eks --region us-west-2 update-kubeconfig --name ${{ secrets.PROD_CLUSTER_NAME }} --role-arn arn:aws:iam::114005596095:role/KubernetesAdmin
+
+      - name: Setup Variables
+        run: |
+          RELEASE_NAME="${{ env.PROJECT_NAME }}"
+          BASE_ENDPOINT=https://${RELEASE_NAME}.${ENVIRONMENT_NAME}.chgapi.net
+          echo "RELEASE_NAME=$RELEASE_NAME" >> $GITHUB_ENV
+          echo "BASE_ENDPOINT=$BASE_ENDPOINT" >> $GITHUB_ENV
+
+      - name: Deploy to Prod
+        run: |
+          helm list -n ${{ env.ENVIRONMENT_NAME }} \
+            | grep  "${{ env.RELEASE_NAME }}" \
+            | grep "failed" > /dev/null \
+            && echo "\033[0;31m
+              A prior helm install failed. This is preventing subsequent attempts from succeeding.
+              Please resolve the issue and delete the failed install with the following command before re-running the workflow:
+              helm delete ${{ env.RELEASE_NAME }} -n ${{ env.ENVIRONMENT_NAME }}
+              \033[0m"
+          helm repo add chg https://chghealthcare.github.io/chg-helm-charts-tool/
+          helm upgrade ${{ env.RELEASE_NAME }} chg/service \
+            --install \
+            --wait \
+            --set "image.repository=${{ env.ECR_REGISTRY }}/${{ env.PROJECT_NAME }}" \
+            --set "image.tag=${{ env.IMAGE_TAG }}" \
+            --set "project=${{ env.PROJECT_NAME }}" \
+            --set jobs[0].containerName="${{ env.PROJECT_NAME }}-integration-test-runner" \
+            --set jobs[0].image="${{ env.ECR_REGISTRY }}/${{ env.PROJECT_NAME }}:${{ env.IMAGE_TAG }}" \
+            --set jobs[0].envs[0].name='BASE_ENDPOINT' \
+            --set jobs[0].envs[0].value="${{ env.BASE_ENDPOINT }}" \
+            --namespace=${{ env.ENVIRONMENT_NAME }} \
+            --version ${{ env.HELM_CHARTS_VERSION }} \
+            -f values/values-${{ env.ENVIRONMENT_NAME }}.yaml
+
+      - name: Output Service URL(s)
+        run: |
+          echo "Access the service at the following URL(s):"
+          kubectl get virtualservice -n ${{ env.ENVIRONMENT_NAME }} ${{ env.RELEASE_NAME }} -o=json | jq '.spec.hosts[]' | tr -d '"' | awk '{print "https://"$1}'

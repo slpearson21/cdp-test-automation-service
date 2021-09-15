@@ -1,0 +1,39 @@
+{
+  "name": "cdp-test-automation-service",
+  "version": "0.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "nodemon ./src/apis/rest/bin/www",
+    "lint": "eslint .",
+    "prepare": "husky install",
+    "start:client:rest": "node ./src/apis/rest/bin/www",
+    "start": "npm run start:client:rest",
+    "test:api:prod": "jest --config=jest.api.prod.config.js",
+    "test:api": "jest --config=jest.api.config.js",
+    "test:watch": "npm run test -- --watch",
+    "test": "jest --config=jest.unit.config.js"
+  },
+  "dependencies": {
+    "@chghealthcare/chg-logger-library": "^3.0.2",
+    "awilix": "^4.3.4",
+    "dotenv": "^10.0.0",
+    "elastic-apm-node": "^3.16.0",
+    "express": "^4.17.1",
+    "helmet": "^4.6.0",
+    "swagger-jsdoc": "^6.1.0",
+    "swagger-ui-express": "^4.1.6"
+  },
+  "devDependencies": {
+    "axios": "^0.21.1",
+    "eslint": "^7.29.0",
+    "eslint-config-standard": "^16.0.3",
+    "eslint-plugin-import": "^2.23.4",
+    "eslint-plugin-jsdoc": "^35.4.1",
+    "eslint-plugin-node": "^11.1.0",
+    "eslint-plugin-promise": "^5.1.0",
+    "eslint-plugin-standard": "^5.0.0",
+    "husky": "^7.0.0",
+    "jest": "^27.0.6",
+    "nodemon": "^2.0.9"
+  }
+}
