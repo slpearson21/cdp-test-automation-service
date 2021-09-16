@@ -22,7 +22,7 @@ scaling:
 # If set to true, the vault secret must exist or service
 # deployment will fail.
 # You can find the vault secrets here: https://vault.shared.aws.chgit.com/ui/vault/secrets/dev/list
-pullVaultSecrets: false
+pullVaultSecrets: true
 
 # Service environment
 environment: "development"
@@ -37,6 +37,8 @@ envs:
     value: info
   - name: PORT
     value: 3000
+  - name: ENV_VAR1
+    value: 'woot'
 
 # Service container routing and health probe definition
 service:

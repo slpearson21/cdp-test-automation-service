@@ -17,6 +17,7 @@ module.exports = {
     ecmaVersion: 2018,
   },
   rules: {
+    semi: 'error',
     complexity: [
       'error',
       {
