@@ -10,7 +10,7 @@ describe('getEnv', () => {
 
     getEnv = initGetEnv({
       logger: mockLogger,
-    });
+    })
   })
 
   describe('when called with no environment variables set', () => {
