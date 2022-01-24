@@ -28,3 +28,7 @@ Please describe, at a high level, the acceptance criteria of this bugfix, new fe
 - [ ] Classes, Methods, and Functions should be documented following the JSDoc style
 - [ ] Update the readme when large functional changes occur (examples include large logic flows, or adding an npm script)
 - [ ] Infrastructure (testing harnesses, local storage, etc) should be testable locally whenever possible. Typically this is done via Make, Docker, npm, and shell scripting.
+
+## Other Deployment Notes
+
+@chghealthcare/cdp
